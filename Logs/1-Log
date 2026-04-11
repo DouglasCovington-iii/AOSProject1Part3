@@ -1,0 +1,35 @@
+Set up logging file at lcoation Logs/1-Log
+-------------------------------------------------------------
+My ID is 1
+Created Local Database at Databases/1-Database
+Using topology1.txt as topology data
+Number of Nodes: 4
+
+Topology:
+
+0 1 0 1 
+1 0 1 0 
+0 1 0 1 
+1 0 1 0 
+
+Transtive closure of topology graph:
+
+1 1 1 1 
+1 1 1 1 
+1 1 1 1 
+1 1 1 1 
+
+graph is connected
+
+-------------------------------------------------------------
+
+Node 1 will connect with it neighboors: 
+
+[2 4]
+
+-------------------------------------------------------------
+Listener thread listening on port 5002
+fdp sempahore got signaled
+(INTIATOR handler, id = 1): I have been spawned
+(INTIATOR handler, id = 2): I have been spawned
+Listener thread listening on port 5001
