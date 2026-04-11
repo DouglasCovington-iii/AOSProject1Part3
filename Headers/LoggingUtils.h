@@ -37,7 +37,7 @@ private:
     std::mutex atomic_str_buff;
 
     std::fstream file_stream;
-    std::ostream str_buff_s;
+    std::ostringstream str_buff_s;
 
     void log_impl() {
         if (logToConsole) {
@@ -230,7 +230,7 @@ public:
         str_buff_s.str("");   // clear the internal buffer (the string)
         str_buff_s.clear();
 
-        log_impl_str(rest)
+        log_impl_str(rest...);
         return str_buff_s.str();
     }
 
