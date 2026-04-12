@@ -27,7 +27,7 @@ void writeAll(int fd, const void* buffer, std::size_t length) {
         l.frameLog("pre_iteration=", i, 
                     ", fd=", fd,
                     ", total_sent=", total_written,
-                    ", starting_address_of_buff=", buf + total_written,
+                    ", starting_address_of_buff=", (void *)(buf + total_written),
                     ", Maximum_amount_to_send=", length - total_written
         );
 
@@ -74,7 +74,7 @@ ssize_t readAll(int fd, void* buffer, std::size_t length) {
         l.frameLog("pre_iteration=", i, 
                     ", fd=", fd,
                     ", total_read=", total_read,
-                    ", starting_address_of_buff=", buf + total_read,
+                    ", starting_address_of_buff=", (void *)(buf + total_read),
                     ", Maximum_amount_to_read=", length - total_read
 
         );
@@ -125,7 +125,7 @@ void sendAll(int sockfd, const void* buffer, std::size_t length) {
         l.frameLog("pre_iteration=", i, 
                     ", sockfd=", sockfd,
                     ", total_sent=", total_sent,
-                    ", starting_address_of_buff=", buf + total_sent,
+                    ", starting_address_of_buff=", (void *)(buf + total_sent),
                     ", Maximum_amount_to_send=", length - total_sent
         );
 
@@ -178,7 +178,7 @@ void recvAll(int sockfd, void* buffer, std::size_t length) {
         l.frameLog("pre_iteration=", i, 
                     ", sockfd=", sockfd,
                     ", total_recv=", total_recv,
-                    ", starting_address_of_buff=", buf + total_recv,
+                    ", starting_address_of_buff=", (void *)(buf + total_recv),
                     ", Maximum_amount_to_recv=", length - total_recv
 
         );

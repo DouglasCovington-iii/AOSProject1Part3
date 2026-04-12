@@ -21,7 +21,7 @@ run:
 	./$(TARGET) $(ID)
 
 
-RECP_ID = 2
+RECP_ID = 1 
 REQ_FILENAME = "JEDI.pdf"
 
 T_SRC_FILES := FDPClient.cpp SystemUtils.cpp LoggingUtils.cpp

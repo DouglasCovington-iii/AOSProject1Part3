@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     int rc = connect(sock_fd, result.ai_addr, result.ai_addrlen);
 
     if (rc == -1) {
-        throw std::runtime_error("Couldn't connect to " + std::string());
+        throw std::runtime_error("Couldn't connect to " + hostname);
     }
 
     l.log("Successfully connected to machine ", recp_id);
