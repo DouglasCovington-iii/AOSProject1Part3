@@ -326,6 +326,8 @@ void userHandlerEntry(int client_fd, int t_id) {
 
         std::unique_lock<std::mutex> lock(atomic_write_mtx);
         l.userHandlerLog(t_id, "Preparing to send file located at '", target_file_path, "'");
+
+        sendCMToFD(client_fd, "SUCCESS");
         sendFileByteStream(client_fd, target_file_path);
         //lock.unlock();
 

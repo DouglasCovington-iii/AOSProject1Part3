@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
     l.log("Requesting file '", file_req, "' from machine ", recp_id);
 
     std::string hostname = lookupMachineAddress(recp_id);
-    addrinfo result = dnsLookup(hostname, 5002);
+    addrinfo result = dnsLookup(hostname, 5000);
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     int rc = connect(sock_fd, result.ai_addr, result.ai_addrlen);
