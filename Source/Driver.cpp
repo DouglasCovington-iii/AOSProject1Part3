@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
     int id = std::stoi(argv[1]);
     LOCAL_ID = id;
 
-    std::string target_dir = config::LOG_DIR + "/" + std::to_string(id) + "-Log";
+    //std::string target_dir = config::LOG_DIR + "/" + std::to_string(id) + "-Log";
     //l.setUpFile(target_dir); 
 
     l.logDelimiter();
@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     for(int i = 0; i < n; i++) {
         for(int j = 0; j < n; j++) {
             if (!result.get(i, j)) {
-                throw std::invalid_argument("\nThe graph is not connected");
+                l.logAndThrowError("The graph is not connected");
             }
         }
     }
@@ -96,10 +96,9 @@ int main(int argc, char** argv) {
     
     neighboor_str = "[";
     for(int i = 0; i < neighboors.size(); i++) {
-        neighboor_str += std::to_string(neighboors[i]) + ( (i != neighboors.size() -1) ? " ": "");
+        neighboor_str += std::to_string(neighboors[i]) + ( (i != neighboors.size() -1) ? " ": "]");
     }
 
-    neighboor_str += "]";
     l.log(neighboor_str);
 
     l.logDelimiter(1, 0);
@@ -148,4 +147,5 @@ int main(int argc, char** argv) {
     userListener.join();
 
     fdpListener.join();
+    reciverListener.join();
 }

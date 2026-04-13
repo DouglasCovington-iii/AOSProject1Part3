@@ -67,186 +67,220 @@ FiniteReqestSet::FiniteReqestSet(u_int32_t fixed_capacity) {
 
 bool FiniteReqestSet::contains(const std::pair<int,int>& entry) {
     std::lock_guard<std::mutex> lock(mtx);
-    return (seen_requests.find(entry) != seen_requests.end());
+    bool contains = (seen_requests.find(entry) != seen_requests.end());
+    l.fsLog("Entry (", entry.first, ", ", entry.second, ") *", (contains ? "is": "is not"), "* contained in FS");
+
+    return (contains);
 }
 
 void FiniteReqestSet::addEntry(std::pair<int,int> entry) {
     std::lock_guard<std::mutex> lock(mtx);
+
+    l.fsLog("curr_size=", curr_size, "fixed_capacity=", fixed_capacity);
+    
     if (contains(entry)) {
+        l.fsLog("Entry (", entry.first, ", ", entry.second, ") already contained in FS");
         return;
     }
 
     if (curr_size < fixed_capacity) {
+        l.fsLog("Enough space to add entry (", entry.first, ", ", entry.second, "), preparing to add entry");
         seen_requests.insert(entry);
         arrival_ordering.push(entry);
+
         curr_size++;
+        l.fsLog("Successfully added entry (", entry.first, ", ", entry.second, ")");
         return;
     }
 
-    //offload the the set a bit
+    l.fsLog("Finite Set has reached its capacity, offloading ", (fixed_capacity / 10) + 1);
+
+    //offload the the set by a tenth, (i.e 100 FC would kick out 11)
+    //Starting a 0 is a defensive mechaninism if the integer division is 0
     for (int i = 0; i <= fixed_capacity / 10; i++ ) {
         std::pair<int, int> e = arrival_ordering.front();
+        l.fsLog("Preparing to remove entry (", e.first, ", ", e.second, ")");
         arrival_ordering.pop();
 
         seen_requests.erase(e);
         curr_size--;
+
+        l.fsLog("Successfully removed entry (", e.first, ", ", e.second, "), curr_size=", curr_size);
     }
+
+    l.fsLog("Successfully clear room, curr_size=", curr_size);
+    l.fsLog("Preparing to insert entry (", entry.first, ", ", entry.second, ")");
 
     seen_requests.insert(entry);
     arrival_ordering.push(entry);
     curr_size++;
+
+    l.fsLog("Successfully inserted entry (", entry.first, ", ", entry.second, ")");
 }
 
 void ConnectionMultiplexer::manageConnection(int id, int fd) {
     std::lock_guard<std::mutex> lock(mtx);
+
+    l.cmLog("Added Connection (", id, ", ", fd, ") to CM");
     multiplexer[id] = fd;
 }
 
 void ConnectionMultiplexer::floodAll(const std::string& controlMsg) {
     std::lock_guard<std::mutex> lock(mtx);
 
+    l.cmLog("Preparing to flood control message: '", controlMsg, "'");
+
     for(const auto& pair : multiplexer) {
         int neighboorFd = pair.second;
+
+        l.cmLog("Preparing to send to Node ", pair.first, " through fd ", pair.second);
         sendCMToFD(neighboorFd, controlMsg); 
     }
+
+    l.cmLog("Flooded control message: '", controlMsg, "'");
 }
 
 void ConnectionMultiplexer::floodAllExcept(int node, const std::string& controlMsg) {
     std::lock_guard<std::mutex> lock(mtx);
 
+    l.cmLog("Preparing to flood control message: '", controlMsg, "' except to Node ", node);
     for(const auto& pair : multiplexer) {
         if (pair.first != node) { 
+            l.cmLog("Preparing to send to Node ", pair.first, " through fd ", pair.second);
+
             int neighboorFd = pair.second;
             sendCMToFD(neighboorFd, controlMsg); 
         }
     }
+
+    l.cmLog("Flooded control message: '", controlMsg, "' except to Node ", node);
 }
 
 void ConnectionMultiplexer::sendTo(int recpientId, const std::string& controlMsg) {
     std::lock_guard<std::mutex> lock(mtx);
     int neighboorFd = multiplexer[recpientId];
 
+    l.cmLog("Preparing to send control_msg='", controlMsg, "', through (", recpientId, ", ", neighboorFd,")");
     sendCMToFD(recpientId, controlMsg);
 }
 
-void BulletinBoard::postQuery(int requestNum) {
+void BulletinBoard::postQuery(int req_num) {
     std::lock_guard<std::mutex> lock(mtx);
 
-    bulletinBoard[requestNum] = std::vector<int>();
+    bulletinBoard[req_num] = std::vector<int>();
+    l.bbLog("Posted ", req_num, " with [] to the BB");
 }
 
-void BulletinBoard::removeQuery(int requestNum) {
+void BulletinBoard::removeQuery(int req_num) {
     std::lock_guard<std::mutex> lock(mtx);
 
-    bulletinBoard.erase(requestNum);
+    bulletinBoard.erase(req_num);
+    l.bbLog("Removed ", req_num, " from the BB");
 }
 
-std::vector<int> BulletinBoard::getResult(int requestNum) {
+std::vector<int> BulletinBoard::getResult(int req_num) {
     std::lock_guard<std::mutex> lock(mtx);
 
-    return bulletinBoard[requestNum];
+    std::vector<int> result = bulletinBoard[req_num];
+    std::ostringstream oss;
+
+    oss << "[";
+    for(int i = 0; i < result.size(); i++) {
+        oss << i << (i != (result.size() - 1)? " ":"]");
+    }
+
+    l.bbLog("Retrived list of results from req_num=", req_num,  ": ",  oss.str());
+    return result;
 }
 
 void BulletinBoard::answerQueryIfApp(int responderId, int requestNum) {
     if (bulletinBoard.find(requestNum) != bulletinBoard.end()) {
         bulletinBoard[requestNum].push_back(responderId);
+
+        l.bbLog("Placed resp_id=", responderId, " in req_num=", requestNum, " bucket");
+        return;
     }
+
+    l.bbLog("Didn't find a entry for req_num=", requestNum);
 }
 
 int waitTimeFromHopCount(double hopCount) {
     return (hopCount / 2) + 2;
 }
 
+
+//This really should be in system utils but I would have
+//to refactor DB utils to not use shared memory 
 std::string intiateDownload(int responder_id, std::string file_name) {
     int id = LOCAL_ID;
 
-    std::string connection_url = lookupMachineAddress(responder_id);
-
-    addrinfo hints{};
-    addrinfo* res;
-
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-
-    int status = getaddrinfo(connection_url.c_str(), "5002", &hints, &res);
-
-    if (status != 0) {
-        throw std::runtime_error("Could not resolve DNS query");
-    }
-
+    l.systemLog("Preparing to intiate Download for Machine ", responder_id, " for file '", file_name, "'");
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
+    std::string connection_url = lookupMachineAddress(responder_id);
+    addrinfo res = dnsLookup(connection_url, 5002);
+
+    bool connection_failed;
+    bool have_another_attempt = false;
+    int attempts_tried = 0;
     const int MAX_TRIES = 3;
-    int result = connect(sock_fd, res->ai_addr, res->ai_addrlen);
-    
-    int curr_try = 1; 
-    while (result == -1) {
-        if (curr_try >= MAX_TRIES) {
+    int wait_time_per_attempts = 2; // seconds
+
+    do {
+        l.systemLog("Attempt ", (attempts_tried + 1), " to connect to '", connection_url, "'");
+        int rc = connect(sock_fd, res.ai_addr, res.ai_addrlen);
+        attempts_tried++;
+
+        //Connection set up was succfell
+        connection_failed = rc == -1;
+
+        if (!connection_failed) {
             break;
         }
-        std::cout << "Node " << id << " has failed to connect to " << connection_url << " : retrying in two seconds\n";
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        std::cout << "Node " << id << " is retrying to connect to " << connection_url << "\n";
-        result = connect(sock_fd, res->ai_addr, res->ai_addrlen);
-        curr_try++;
-    }
 
-    if (curr_try >= MAX_TRIES) {
-            return "";
+        l.systemLog("Node ", id, " has failed to connect to '", connection_url, "'");
+        have_another_attempt = (attempts_tried < MAX_TRIES);
+
+        if (have_another_attempt) {
+            l.systemLog("Node ", id, " will retry to connect to '", connection_url, "' in ", wait_time_per_attempts, " seconds");
+            std::this_thread::sleep_for(std::chrono::seconds(wait_time_per_attempts));
+        }
+
+    } while (connection_failed && have_another_attempt);
+
+    if (connection_failed) {
+        l.systemLog("Failed to connect have after ", MAX_TRIES, " attempts");
+        return ""; // indicator to caller that could not dowload file;
     }
 
     sendCMToFD(sock_fd, file_name);
     std::string response = recvCMFromFD(sock_fd);
 
-    if (isError(response)) {
-        return "";
+    if (response != "SUCCESS") {
+        l.systemLog("Node ", responder_id,  " response: ", response);
+        return ""; // indicator to caller that could not dowload file;
     }
 
-
     std::string placeholder_dir = getDatabaseDir();
-    std::string unique_file_name = file_name + "XXXXXX";
+    std::string unique_file_name = file_name + "XXXXXX"; //template for mkstemp
 
     std::string unique_file_path = placeholder_dir + "/" + unique_file_name;
 
+    l.systemLog("Preparing to make unqiue temporary file with a templated_path='", unique_file_path, "'");
     int file_fd = mkstemp(&(unique_file_path[0]));
+    l.systemLog("Created unqiue temporary file located '", unique_file_path, "'");
+
     close(file_fd);
 
     unique_file_name = getLastComponentInPath(unique_file_path);
+
+    l.systemLog("Preparing to download ", file_name, " in ", placeholder_dir, " named ", unique_file_name);
     recvFileByteStream(sock_fd, placeholder_dir, unique_file_name);
 
     return unique_file_path;
 }
 
-struct RequestMessage {
-    int request_num;
-    std::string file_name;
-    int ttl;
-    std::vector<int> source_path;
-};
 
-RequestMessage parseRequest(const std::string& msg) {
-    std::istringstream iss(msg);
-
-    std::string keyword;
-    iss >> keyword;
-
-    if (keyword != "request") {
-        throw std::runtime_error("Invalid message type");
-    }
-
-    RequestMessage result;
-
-    if (!(iss >> result.request_num >> result.file_name >> result.ttl)) {
-        throw std::runtime_error("Malformed request header");
-    }
-
-    int node_id;
-    while (iss >> node_id) {
-        result.source_path.push_back(node_id);
-    }
-
-    return result;
-}
 
 void userHandlerEntry(int client_fd, int t_id) {
     /*
@@ -335,41 +369,63 @@ void userHandlerEntry(int client_fd, int t_id) {
         return;
     }
 
+    int MAX_HOP_COUNT = 16;
     int request_num;
     int hop_count = 1;
     bool found_answer = false;
     std::vector<int> responses;
 
-    while (hop_count <= 16) {
-        request_num = getNextReqNum();
-        double wait_time = waitTimeFromHopCount(hop_count);
+    l.userHandlerLog(t_id, "Did not find '", file_name, "' in local database");
 
+    l.userHandlerLog(t_id, "Commencing search amongst peers");
+    while (hop_count <= MAX_HOP_COUNT) {
+        l.userHandlerLog(t_id, "Trying with max_hopcount=", hop_count);
+
+        l.userHandlerLog(t_id, "Requesting unique request_num");
+        request_num = getNextReqNum();
+        l.userHandlerLog(t_id, "Generated unique request_num=", request_num);
+
+        l.userHandlerLog(t_id, "Creating post for request_num=", request_num, " on BB");
         bb.postQuery(request_num);
 
         RequestMsgPayload request{request_num, file_name, hop_count, {id}};
+
+        l.userHandlerLog(t_id, "Sending Control message: ", request);
         cm.floodAll(formatRequestCtrlMsg(request));
 
+        double wait_time = waitTimeFromHopCount(hop_count);
+
+        l.userHandlerLog(t_id, "Preparing to wait ", wait_time, " seconds");
         std::this_thread::sleep_for(std::chrono::seconds((int) wait_time));
+        l.userHandlerLog(t_id, "FINISHED WAITING ", wait_time, " SECONDS");
+
         responses = bb.getResult(request_num);
+        l.userHandlerLog(t_id, "Recvied request set from req_num=", request_num, ": ", formatNeighboorList(responses));
+
         bb.removeQuery(request_num);
+        l.userHandlerLog(t_id, "Removed req_num=", request_num, "from BB");
 
         if (!responses.empty()) {
+            l.userHandlerLog(t_id, "Found a responder");
+
             found_answer = true;
             break;
         }
 
+        l.userHandlerLog(t_id, "Did not find a file within ", hop_count);
         hop_count *= 2;
     }
 
     if (!found_answer) {
+        l.userHandlerLog(t_id, "Did not find file within a maximum hop count of ", MAX_HOP_COUNT);
         sendCMToFD(client_fd, "ERROR: FILE NOT FOUND");
         close(client_fd);
         return;
     }   
 
-    sendCMToFD(client_fd, "SUCCESS");
-
     int idOfResponder = responses.at(0);
+
+    l.userHandlerLog(t_id, "Preparing to download ", file_name, " from machine ", idOfResponder);
     std::string unique_file_path = intiateDownload(idOfResponder, file_name);
 
     if (unique_file_path == "") {
@@ -378,24 +434,34 @@ void userHandlerEntry(int client_fd, int t_id) {
         return;
     }
 
+    l.userHandlerLog(t_id, "Sending success return code");
+    sendCMToFD(client_fd, "SUCCESS");
+
+    l.userHandlerLog(t_id, "Sending downloaded file");
+
     sendFileByteStream(client_fd, unique_file_path);
-    close(client_fd);
+    close(client_fd); //The user Handler job is dones
+    l.userHandlerLog(t_id, "Closed Connection");
 
     std::string db_file_path = makeDbPath(file_name);
     
     std::unique_lock<std::mutex> lock(atomic_write_mtx);
+
+    l.userHandlerLog(t_id, "Adding/(Potentially overwritting) saving copy to database as ", db_file_path);
     rename(unique_file_path.c_str(), db_file_path.c_str());
     lock.unlock();
 
+    l.userHandlerLog(t_id, "Adding file ", db_file_path, " to local index");
     addFileToIndex(file_name);
+    l.userHandlerLog(t_id, "OPERATION FINISHED, TERMINATING EXECUTION");
 }
 
 void reciverHandlerEntry(int fd, const std::string& role, int old_t_id) {
     u_int32_t t_id = getNextRecvT_id();
-    l.handlerLog(Roles::RECIVER, t_id, "I have spawned from (", role, ", t_id = ", old_t_id, ")");
+    l.reciverHandlerLog(t_id, "I have spawned from (", role, ", t_id = ", old_t_id, ")");
 
+    //Signal to driver that one connection has been made
     sem_post(&recivers_init_sem);
-
 
     const int id = LOCAL_ID;
     SharedDataStructures& sds = *sharedDataStructures;
@@ -405,52 +471,75 @@ void reciverHandlerEntry(int fd, const std::string& role, int old_t_id) {
     FiniteReqestSet& request_set = sds.seen_requests;
 
     while (true) {
+        l.reciverHandlerLog(t_id, "Waiting for control message");
         std::string ctrl_msg = recvCMFromFD(fd);
-
-        l.handlerLog(Roles::RECIVER, t_id, "I have recvied a control message ", ctrl_msg);
-
         std::string ctrl_msg_stem = getStem(ctrl_msg);
+
+        l.reciverHandlerLog(t_id, "I have recvied a control message '", ctrl_msg, "' with ctrl_msg_stm=", ctrl_msg_stem);
 
         if (ctrl_msg_stem == "request") {
             RequestMsgPayload p = parseRequstCtrlMsg(ctrl_msg);
 
-            if (request_set.contains({p.sourcePath[0], p.reqNum})) {
+            l.reciverHandlerLog(t_id, "Parsed_req_msg=", p);
+
+            int source_orginator = p.sourcePath[0];
+
+            if (request_set.contains({source_orginator, p.reqNum})) {
+                l.reciverHandlerLog(t_id, "Ignoring seened request from '", source_orginator, "' with a req_num=", p.reqNum);
                 continue;
             }
 
-            request_set.addEntry({p.sourcePath[0], p.reqNum});
+            l.reciverHandlerLog(t_id, "Adding '", source_orginator, "' with a req_num=", p.reqNum, " to seen requests");
+            
+            // Implicity contructing a std::pair<int,int> object
+            request_set.addEntry({source_orginator, p.reqNum});
 
+            l.reciverHandlerLog(t_id, "Looking up to see if '", p.fileName, "' is in local database");
             if (lookUpFile(p.fileName)) {
+                l.reciverHandlerLog(t_id, "Found '", p.fileName, "' in local database, preparing to send reply");
                 int prev_node = p.sourcePath.back();
-
                 ReplyMsgPayload newP{id, p.reqNum, p.sourcePath};
+
+                l.reciverHandlerLog(t_id, "Sending to prev_node=", prev_node, " reply_payload=", newP);
                 cm.sendTo(prev_node, formatReplyCtrlMsg(newP));
+
                 continue;
             }
 
+            l.reciverHandlerLog(t_id, "Did not find '", p.fileName, "' in local database");
             int newTTL = p.ttl - 1;
 
             if (newTTL > 0) {
                 int prev_node = p.sourcePath.back();
                 p.sourcePath.push_back(id);
-
                 RequestMsgPayload newP{p.reqNum, p.fileName, newTTL, p.sourcePath};
+
+                l.reciverHandlerLog(t_id, "Flooding new reply message except to '", prev_node ,"', req_msg_payload=", newP);
                 cm.floodAllExcept(prev_node, formatRequestCtrlMsg(newP));
-            } 
+
+                continue;
+            }
+            
+            l.reciverHandlerLog(t_id, "TTL=", newTTL, ", DROPPING REQUEST");
 
         } else if (ctrl_msg_stem == "reply") {
-            ReplyMsgPayload p = parseReplyCtrlMsg(ctrl_msg); 
+            ReplyMsgPayload p = parseReplyCtrlMsg(ctrl_msg);
+            
+            l.reciverHandlerLog(t_id, "parsed_reply_payload=", p);
 
             if (p.sourcePath.size() == 1 && p.sourcePath[0] == id) {
+                l.reciverHandlerLog(t_id, "Found a reply for me, preparing to post on BB req_num=", p.reqNum, ", resp_id=", p.responder);
                 bb.answerQueryIfApp(p.responder, p.reqNum);
             } else {
                 int prev_node = p.sourcePath.back();
                 p.sourcePath.pop_back();
-
                 ReplyMsgPayload newP{p.responder, p.reqNum, p.sourcePath};
+                l.reciverHandlerLog(t_id, "Redirecting Reply back to source, sending to ", prev_node, ", ctrl_msg='", formatReplyCtrlMsg(newP), "'");
                 cm.sendTo(prev_node, formatReplyCtrlMsg(newP));
             }
         }
+
+        l.reciverHandlerLog(t_id, "Recived unknown ctrl_msg with stem='", ctrl_msg_stem,"'");
     }
     /*
     const int id = LOCAL_ID
@@ -515,14 +604,18 @@ void reciverHandlerEntry(int fd, const std::string& role, int old_t_id) {
 }
 
 void fdpHandlerEntry(int client_fd, int t_id) {
+    l.fdpHandlerLog(t_id, "I have spawned");
     int id = LOCAL_ID;
-    std::string requested_file_name = recvCMFromFD(client_fd);
 
+    l.fdpHandlerLog(t_id, "Listening for request");
+    std::string requested_file_name = recvCMFromFD(client_fd);
     l.fdpHandlerLog(t_id, "Recived file download request ", requested_file_name);
 
     if (!lookUpFile(requested_file_name)) {
-        sendCMToFD(client_fd, "ERROR: Could not find " + requested_file_name + " in Node " + std::to_string(id) + " local Database");
         l.fdpHandlerLog(t_id, "ERROR: Could not find " + requested_file_name + " in Node " + std::to_string(id) + " local Database");
+        sendCMToFD(client_fd, "ERROR: Could not find " + requested_file_name + " in Node " + std::to_string(id) + " local Database");
+
+        close(client_fd);
         return;
     }
 
@@ -531,8 +624,8 @@ void fdpHandlerEntry(int client_fd, int t_id) {
     std::string target_file_path = makeDbPath(requested_file_name);
 
     std::unique_lock<std::mutex> lock(atomic_write_mtx);
+    l.fdpHandlerLog(t_id, "Preparing to send '", requested_file_name, "' located='", target_file_path, "'");
     sendFileByteStream(client_fd, target_file_path);
-    lock.unlock();
 }
 
 

@@ -21,6 +21,9 @@ namespace Roles {
 namespace Layers {
     constexpr const char* SYSTEM    = "[SYSTEM] ";
     constexpr const char* FRAME  = "[FRAME] ";
+    constexpr const char* BB    = "<BB> ";
+    constexpr const char* CM  = "<CM> ";
+    constexpr const char* FS  = "<FS> ";
 }
 
 class Logger {
@@ -221,6 +224,21 @@ public:
     template <typename... Args>
     void frameLog(const Args&... rest) {
         log("[Frame] ", rest...);
+    }
+
+    template <typename... Args>
+    void bbLog(const Args&... rest) {
+        log(Layers::BB, rest...);
+    }
+
+    template <typename... Args>
+    void cmLog(const Args&... rest) {
+        log(Layers::CM, rest...);
+    }
+
+    template <typename... Args>
+    void fsLog(const Args&... rest) {
+        log(Layers::FS, rest...);
     }
 
     template <typename... Args>

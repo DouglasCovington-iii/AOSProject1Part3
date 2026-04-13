@@ -2,6 +2,25 @@
 #include <ProtocolParserUtils.h>
 #include <sstream>
 
+std::ostream& operator<<(std::ostream& os, const RequestMsgPayload& rq_p) {
+   os << "{" << "req_num=" << rq_p.reqNum << 
+    ", file_name=" << rq_p.fileName << 
+    ", ttl=" << rq_p.ttl << 
+    ", source_path="  << formatNeighboorList(rq_p.sourcePath) << 
+    "}";
+
+    return os;
+}   
+
+std::ostream& operator<<(std::ostream& os, const ReplyMsgPayload& rp_p) {
+    os << "{" << "req_num=" << rp_p.reqNum << 
+    ", responder=" << rp_p.responder << 
+    ", source_path=" << formatNeighboorList(rp_p.sourcePath) <<
+    "}";
+
+    return os;
+}
+
 bool isError(std::string cntrl_msg) {
     if (cntrl_msg.find("ERROR") != std::string::npos) {
         return true;
@@ -18,6 +37,17 @@ std::string getLastComponentInPath(std::string path) {
     }
 
     return path.substr(pos + 1);
+}
+
+std::string formatNeighboorList(std::vector<int> neig_list) {
+    std::ostringstream oss;
+
+    oss << "[";
+    for(int i = 0; i < neig_list.size(); i++) {
+        oss << i << (i != (neig_list.size() - 1)? " ":"]");
+    }
+
+    return oss.str();
 }
 
 std::string getStem(std::string cntrl_msg) {

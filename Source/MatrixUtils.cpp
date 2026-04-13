@@ -9,9 +9,9 @@ Matrix<bool> loadTMatrix(std::string fileName, std::string matrixName) {
      std::ifstream strm(config::CONFIG_DIR + "/" + fileName);
     
     if (strm.is_open()) {
-        l.log( "Using ", fileName, " as topology data");
+        l.log("Using ", fileName, " as topology data");
     } else {
-        throw std::runtime_error("Failed to open file " + config::CONFIG_DIR + fileName);
+        throw std::runtime_error("Failed to open file " + config::CONFIG_DIR + "/" + fileName);
     }
     
     int n;
