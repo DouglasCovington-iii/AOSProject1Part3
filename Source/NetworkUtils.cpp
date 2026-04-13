@@ -65,6 +65,13 @@ FiniteReqestSet::FiniteReqestSet(u_int32_t fixed_capacity) {
     curr_size = 0;
 }
 
+bool FiniteReqestSet::internalContains(const std::pair<int,int>& entry) {
+    bool contains = (seen_requests.find(entry) != seen_requests.end());
+    l.fsLog("Entry (", entry.first, ", ", entry.second, ") *", (contains ? "is": "is not"), "* contained in FS");
+
+    return (contains);
+}
+
 bool FiniteReqestSet::contains(const std::pair<int,int>& entry) {
     std::lock_guard<std::mutex> lock(mtx);
     bool contains = (seen_requests.find(entry) != seen_requests.end());
@@ -78,7 +85,7 @@ void FiniteReqestSet::addEntry(std::pair<int,int> entry) {
 
     l.fsLog("Preparing to add entry, curr_size=", curr_size, ", fixed_capacity=", fixed_capacity);
     
-    if (contains(entry)) {
+    if (internalContains(entry)) {
         l.fsLog("Entry (", entry.first, ", ", entry.second, ") already contained in FS");
         return;
     }

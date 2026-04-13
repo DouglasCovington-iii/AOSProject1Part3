@@ -16,6 +16,7 @@ class FiniteReqestSet {
                 }
             };
         
+        bool internalContains(const std::pair<int,int>& entry);
         std::mutex mtx;
         u_int32_t fixed_capacity;
         u_int32_t curr_size;
