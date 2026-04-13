@@ -168,7 +168,7 @@ void ConnectionMultiplexer::sendTo(int recpientId, const std::string& controlMsg
     int neighboorFd = multiplexer[recpientId];
 
     l.cmLog("Preparing to send control_msg='", controlMsg, "', through (", recpientId, ", ", neighboorFd,")");
-    sendCMToFD(recpientId, controlMsg);
+    sendCMToFD(neighboorFd, controlMsg);
 }
 
 void BulletinBoard::postQuery(int req_num) {
