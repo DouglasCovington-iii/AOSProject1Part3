@@ -44,7 +44,7 @@ std::string formatNeighboorList(std::vector<int> neig_list) {
 
     oss << "[";
     for(int i = 0; i < neig_list.size(); i++) {
-        oss << i << (i != (neig_list.size() - 1)? " ":"]");
+        oss << i << (neig_list.at(i) != (neig_list.size() - 1)? " ":"]");
     }
 
     return oss.str();
