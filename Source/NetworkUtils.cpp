@@ -76,7 +76,7 @@ bool FiniteReqestSet::contains(const std::pair<int,int>& entry) {
 void FiniteReqestSet::addEntry(std::pair<int,int> entry) {
     std::lock_guard<std::mutex> lock(mtx);
 
-    l.fsLog("curr_size=", curr_size, "fixed_capacity=", fixed_capacity);
+    l.fsLog("curr_size=", curr_size, ", fixed_capacity=", fixed_capacity);
     
     if (contains(entry)) {
         l.fsLog("Entry (", entry.first, ", ", entry.second, ") already contained in FS");
