@@ -22,3 +22,9 @@ The intented way to test the system for now is to
 2) SSH into each respective of the DC machines (order doesn't matter)
 3) cd into the project repository, then just use the run recipe (type make run) or
 generate driver.out and supply the respective id as mentioned above (type make, then driver.out # for the DC#.utdallas machine)
+
+on your own machine, have a directory called UserDatabase in the working direrectory of the project, and run make client to test request a file from a paticular machine with some request number
+
+The FDPClient execuable then makes a request to the machine on port 5000 and downloads the file
+
+All the code was written by me except for the loggingUtility.h methods, this was AI generated to help me log and see inside my project

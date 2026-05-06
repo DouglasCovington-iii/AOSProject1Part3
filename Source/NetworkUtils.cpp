@@ -24,6 +24,8 @@
 #include <ProtocolParserUtils.h>
 #include <LoggingUtils.h>
 #include <SystemUtils.h>
+#include <cstring>   // strerror
+#include <cerrno>    // errno
 
 extern int LOCAL_ID;
 extern SharedDataStructures* sharedDataStructures;
@@ -650,7 +652,7 @@ void listenerEntry(int port_num, void (*handler)(int, int)) {
     addr.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(sock_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == -1 ){
-        throw std::runtime_error(std::string("Failed binding socket for Neighboor "));
+        throw std::runtime_error(std::string("Failed binding socket for Neighboor: " ) + strerror(errno));
     }
 
     if (listen(sock_fd, 1) == -1) {
