@@ -30,6 +30,6 @@ T_SOURCES := $(addprefix $(SRC_DIR)/, $(T_SRC_FILES))
 
 T_TARGET := FDPClient.out
 
-t1:
+client:
 	$(CXX) $(CXXFLAGS) $(T_SOURCES) -o $(T_TARGET)
 	./$(T_TARGET) $(RECP_ID) $(REQ_FILENAME)
