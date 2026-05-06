@@ -109,11 +109,11 @@ int main(int argc, char** argv) {
 
 
     // // Set up your ability to share files
-    std::thread fdpListener(listenerEntry, 5002, fdpHandlerEntry);
+    std::thread fdpListener(listenerEntry, 6002, fdpHandlerEntry);
     // l.log("main thread is waiting");
     sem_wait(&fdp_init_sem);
     l.log("main thread past fdp semaphore");
-    std::thread reciverListener(listenerEntry, 5001, recpientEntry );
+    std::thread reciverListener(listenerEntry, 6001, recpientEntry );
 
     //It's not nessary to have the FDP listener set up assuming error handling is set up for failing to connect to the FDP listner
 
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
 //     Open the door to your customers
 //     */
    
-    std::thread userListener(listenerEntry, 5000, userHandlerEntry);
+    std::thread userListener(listenerEntry, 6000, userHandlerEntry);
     userListener.join();
 
     fdpListener.join();
