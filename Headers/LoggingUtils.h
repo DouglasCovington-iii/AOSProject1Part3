@@ -29,9 +29,9 @@ namespace Layers {
 class Logger {
 private:
     const std::unordered_map<int, const char*> port_to_protocol = {
-        {5000, Roles::UFDP},
-        {5001, Roles::RECIPIENT},
-        {5002, Roles::FDP}
+        {6000, Roles::UFDP},
+        {6001, Roles::RECIPIENT},
+        {6002, Roles::FDP}
     };
 
     bool logToFile;
