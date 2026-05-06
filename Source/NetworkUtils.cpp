@@ -809,7 +809,7 @@ void intiatorEntry(int neighboor_id, int t_id) {
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
 
-    int status = getaddrinfo(connection_url.c_str(), "5001", &hints, &res);
+    int status = getaddrinfo(connection_url.c_str(), "6001", &hints, &res);
 
     if (status != 0) {
         throw std::runtime_error("Could not resolve DNS query");
