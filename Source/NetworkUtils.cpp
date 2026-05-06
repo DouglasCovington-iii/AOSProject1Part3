@@ -652,7 +652,7 @@ void listenerEntry(int port_num, void (*handler)(int, int)) {
     addr.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(sock_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == -1 ){
-        throw std::runtime_error(std::string("Failed binding socket for Neighboor: " ) + strerror(errno));
+        throw std::runtime_error(std::string("Failed binding socket for listener on port " ) + std::to_string(port_num) + ": "  + strerror(errno));
     }
 
     if (listen(sock_fd, 1) == -1) {
